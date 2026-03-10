@@ -45,7 +45,11 @@ bool createInstance(VkInstance *pInstance, const std::vector<const char*> &requi
                 for (int j=0; j<availabeExtensions.size(); ++j)
                 {
                         if (std::strcmp(requiredExtensions[i], availabeExtensions[j].extensionName) == 0)
+                        {
                                 found = true;
+                                break;
+                        }
+
                 }
                 if (found == false)
                 {
