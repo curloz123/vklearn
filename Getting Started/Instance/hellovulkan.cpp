@@ -42,7 +42,8 @@ int main()
         }
        
         VkInstance instance;
-        createInstance(&instance, requiredExtensions);
+        if (!createInstance(&instance, requiredExtensions))
+                return 1;
 
 
         // game loop below
@@ -64,7 +65,7 @@ int main()
         // cleanup
 
         vkDestroyInstance(instance, nullptr);
-        
+
         glfwDestroyWindow(window);
         glfwTerminate();
 
