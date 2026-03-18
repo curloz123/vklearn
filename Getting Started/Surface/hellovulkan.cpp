@@ -34,6 +34,34 @@ int main()
         {
                 "VK_LAYER_KHRONOS_validation"
         };
+         // check layers support
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        for (const char* requiredLayer : validationLayers)
+        {
+                bool layerFound = false;
+                
+                for (const VkLayerProperties &layerProperty : availableLayers)
+                {
+                        if (std::strcmp(requiredLayer, layerProperty.layerName) == 0)
+                        {
+                                layerFound = true;
+                                break;    
+                        }
+
+                }
+                
+                if (layerFound == false)
+                {
+                        printf("Requested Layer: %s, Not available, Exiting....\n", requiredLayer);
+                        return 1;
+                }
+                
+        }
+        printf("All requested layers are present\n");
 
         // Instance creation
         uint32_t glfwExtensionCount = 0;
@@ -46,7 +74,6 @@ int main()
         {
                 requiredExtensions.emplace_back(glfwExtensions[i]);
         }
-
         // debug messenger extension
         requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
@@ -59,6 +86,17 @@ int main()
          if (!createDebugMessenger(instance, &debugMessenger))
                 return 1;
 
+        
+
+
+        // Surface
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
+        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+        {
+                printf("Could not create window surface, exiting...\n");
+                return 1;
+        }
+        printf("Created surface succesfully\n");
 
 
 
@@ -79,6 +117,7 @@ int main()
         }
 
         // cleanup
+        vkDestroySurfaceKHR(instance, surface, nullptr);
         destroyDebugMessenger(instance, debugMessenger);
         vkDestroyInstance(instance, nullptr);
 

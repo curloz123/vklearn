@@ -10,7 +10,7 @@
 // Add vulkan headers
 #include <vulkan/vulkan.h>
 
-#include "initializers.hpp"
+#include "boilerplate.hpp"
 
 int main()
 {
@@ -102,7 +102,7 @@ int main()
 
         // cleanup
 
-        //vkDestroyInstance(instance, nullptr);
+        vkDestroyInstance(instance, nullptr);
 
         glfwDestroyWindow(window);
         glfwTerminate();
