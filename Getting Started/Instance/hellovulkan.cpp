@@ -29,7 +29,41 @@ int main()
 
         // Window creation above
 
+        // Enabling validation layers
+        const std::vector<const char*> validationLayers = 
+        {
+                "VK_LAYER_KHRONOS_validation"
+        };
+         // check layers support
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
+        for (const char* requiredLayer : validationLayers)
+        {
+                bool layerFound = false;
+                
+                for (const VkLayerProperties &layerProperty : availableLayers)
+                {
+                        if (std::strcmp(requiredLayer, layerProperty.layerName) == 0)
+                        {
+                                layerFound = true;
+                                break;    
+                        }
+
+                }
+                
+                if (layerFound == false)
+                {
+                        printf("Requested Layer: %s, Not available, Exiting....\n", requiredLayer);
+                        return 1;
+                }
+                
+        }
+        printf("All requested are present\n");
+
+        // Instance creation
         uint32_t glfwExtensionCount = 0;
         // Get all the required extensions.
         const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -42,14 +76,18 @@ int main()
         }
        
         VkInstance instance;
-        if (!createInstance(&instance, requiredExtensions))
+        if (!createInstance(&instance, requiredExtensions, validationLayers))
                 return 1;
+
+
+
+
 
 
         // game loop below
 
         // game loop
-        //while (!glfwWindowShouldClose(window))
+        while (!glfwWindowShouldClose(window))
         {
                 // Poll all the events
                 glfwPollEvents();
@@ -64,7 +102,7 @@ int main()
 
         // cleanup
 
-        vkDestroyInstance(instance, nullptr);
+        //vkDestroyInstance(instance, nullptr);
 
         glfwDestroyWindow(window);
         glfwTerminate();

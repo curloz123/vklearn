@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <cstring>
 
-bool createInstance(VkInstance *pInstance, const std::vector<const char*> &requiredExtensions, const std::vector<const char*> &validationLayers)
+inline bool createInstance(VkInstance *pInstance, const std::vector<const char*> &requiredExtensions, const std::vector<const char*> &validationLayers)
 {
         // Application Info
         VkApplicationInfo appInfo = {};
@@ -76,5 +76,3 @@ bool createInstance(VkInstance *pInstance, const std::vector<const char*> &requi
         printf("Created Instance\n");     
         return true;  
 }
-
-
