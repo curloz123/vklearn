@@ -161,7 +161,7 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 
 // Physical Device
 
-bool selectPhysicalDevice(VkInstance instance,  VkSurfaceKHR surface, VkPhysicalDevice *pPhysicalDevice)
+bool selectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice *pPhysicalDevice)
 {
         // selecting multiple GPU's
         uint32_t numPhysicalDevices = 0;
@@ -200,9 +200,9 @@ bool selectPhysicalDevice(VkInstance instance,  VkSurfaceKHR surface, VkPhysical
                         if (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
                                 graphicsSupport = true;
                         
-
                         // Present Support
                         vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevices[i], i, surface, &presentSupport);
+
 
                         if (graphicsSupport && presentSupport)
                         break;
@@ -240,4 +240,141 @@ bool selectPhysicalDevice(VkInstance instance,  VkSurfaceKHR surface, VkPhysical
         }
 
         return true;
+}
+void retrieveQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pGraphicsFamily, uint32_t *pPresentFamily)
+{
+        // Retrieve all queue families
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+               
+        bool graphicsFamilyFound = false;
+        VkBool32 presentFamilyFound = false;
+        for (int i = 0; i < queueFamilies.size(); ++i)
+        {
+                // Graphics Support
+                if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                {
+                        *pGraphicsFamily = i;
+                        graphicsFamilyFound = true;
+                }
+                
+                // Present Support
+                vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentFamilyFound);
+                if (presentFamilyFound)
+                        *pPresentFamily = i;
+
+                if (graphicsFamilyFound && presentFamilyFound)
+                        break;
+        }        
+        
+}
+
+bool createDevice(VkPhysicalDevice physicalDevice, const uint32_t graphicsFamilyIndex, const uint32_t presentFamilyIndex, VkDevice *pDevice)
+{
+        VkDeviceCreateInfo deviceInfo = {};
+        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+        // First the queues
+
+        // vector holding all the queue Infos
+        std::vector<VkDeviceQueueCreateInfo> queueInfos;
+
+        float queuePriority = 1.0f;
+        if (graphicsFamilyIndex == presentFamilyIndex)
+        {
+                VkDeviceQueueCreateInfo queueInfo = {};
+                queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueInfo.queueFamilyIndex = graphicsFamilyIndex;
+                queueInfo.queueCount = 1;
+                queueInfo.pQueuePriorities = &queuePriority;
+                queueInfos.push_back(queueInfo);   
+        }
+        else 
+        {
+                VkDeviceQueueCreateInfo graphicsQueueInfo = {};
+                graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                graphicsQueueInfo.queueFamilyIndex = graphicsFamilyIndex;
+                graphicsQueueInfo.queueCount = 1;
+                graphicsQueueInfo.pQueuePriorities = &queuePriority;
+
+                VkDeviceQueueCreateInfo presentQueueInfo = {};
+                presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                presentQueueInfo.queueFamilyIndex = presentFamilyIndex;
+                presentQueueInfo.queueCount = 1;
+                presentQueueInfo.pQueuePriorities = &queuePriority;
+
+                queueInfos.push_back(graphicsQueueInfo);
+                queueInfos.push_back(presentQueueInfo);
+        }
+
+        // tell the device creation struct
+        deviceInfo.queueCreateInfoCount = queueInfos.size();
+        deviceInfo.pQueueCreateInfos = queueInfos.data();
+
+
+
+        // Device Features
+        VkPhysicalDeviceVulkan13Features features13 = {};
+        features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        features13.dynamicRendering = VK_TRUE;
+        features13.pNext = nullptr;
+
+        // chain the struct to main device creation struct
+        deviceInfo.pNext = &features13;
+
+
+
+        // enable swapchain extension
+        const std::vector<const char*> requiredDeviceExtensions = {
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+
+        // Check if extension is present or not
+        uint32_t deviceExtensionCount;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableDeviceExtensions(deviceExtensionCount);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, availableDeviceExtensions.data());
+
+        for (int i=0; i<requiredDeviceExtensions.size(); ++i)
+        {
+                bool extensionFound = false;
+                for (int j=0; j<availableDeviceExtensions.size(); ++j)
+                {
+                        if (std::strcmp(availableDeviceExtensions[j].extensionName, requiredDeviceExtensions[i]))  
+                        {
+                                extensionFound = true;
+                                break;
+                        }
+                }
+                if (!extensionFound)
+                {
+                        printf("Extensions: %s, not available in your GPU, exiting...\n", requiredDeviceExtensions[i]);\
+                        return false;
+                }
+        }
+
+        deviceInfo.enabledExtensionCount = requiredDeviceExtensions.size();
+        deviceInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
+
+
+        // Disabling device features for now, optional to do since {} initializes it to nullptr anyways
+        deviceInfo.pEnabledFeatures = nullptr;
+
+        
+        // creating the device
+        if (vkCreateDevice(physicalDevice, &deviceInfo, nullptr, pDevice) != VK_SUCCESS) 
+        {
+                printf("failed to create logical device. exiting...");
+                return false;
+        }
+        printf("Created logical device\n");
+        return true;
+}
+
+void retrieveQueueIndexes(VkDevice device, const uint32_t graphicsFamilyIndex, const uint32_t presentFamilyIndex, VkQueue *pGraphicsQueue, VkQueue *pPresentQueue)
+{
+        vkGetDeviceQueue(device, graphicsFamilyIndex, 0, pGraphicsQueue);
+        vkGetDeviceQueue(device, presentFamilyIndex, 0, pPresentQueue);
 }
